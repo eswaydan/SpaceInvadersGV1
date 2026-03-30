@@ -28,23 +28,32 @@
         /// </summary>
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
             this.gamePanel1 = new SpaceInvadersGV1.GamePanel();
+            this.timer1 = new System.Windows.Forms.Timer(this.components);
             this.SuspendLayout();
             // 
             // gamePanel1
             // 
             this.gamePanel1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.gamePanel1.Location = new System.Drawing.Point(0, 0);
+            this.gamePanel1.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.gamePanel1.Name = "gamePanel1";
-            this.gamePanel1.Size = new System.Drawing.Size(800, 450);
+            this.gamePanel1.Size = new System.Drawing.Size(1067, 554);
             this.gamePanel1.TabIndex = 0;
+            this.gamePanel1.World = null;
+            // 
+            // timer1
+            // 
+            this.timer1.Tick += new System.EventHandler(this.timer1_Tick);
             // 
             // Form1
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(800, 450);
+            this.ClientSize = new System.Drawing.Size(1067, 554);
             this.Controls.Add(this.gamePanel1);
+            this.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.Name = "Form1";
             this.Text = "Form1";
             this.ResumeLayout(false);
@@ -54,6 +63,7 @@
         #endregion
 
         private GamePanel gamePanel1;
+        private System.Windows.Forms.Timer timer1;
     }
 }
 
