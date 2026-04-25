@@ -33,10 +33,11 @@ namespace SpaceInvadersGV1
             timer1.Start();
 
             gamePanel1.Focus(); //calls the panel to receive active keyboard input
+            gamePanel1.Controls.Add(_world.Lives);  // add lives to gamePanel
         }
 
-        
-       
+
+
         protected override void OnKeyDown(KeyEventArgs e)
         {
 

@@ -52,6 +52,51 @@ namespace SpaceInvadersGV1
         public List<Boulder> boulders = new List<Boulder>();
         private readonly List<ICollisionSystem> _collisionSystems = new List<ICollisionSystem>();
 
+        // added lives label
+        public Label Lives = new Label();
+
+        // update the lives label
+        public void LivesUpdate()
+        {
+            Lives.Text = $"Lives: {Player.LivesLeft}";
+
+            // was trying to make color switch to red then fade to white, but not working
+
+            //Timer ColorFadeTimer = new Timer();
+            //ColorFadeTimer.Interval = 100; // Adjust the interval as needed
+            //if (Player.LivesLeft < 3)
+            //{
+            //    Lives.ForeColor = Color.Red;
+            //    ColorFadeTimer.Start();
+
+            //    //ColorFadeTimer.Stop();
+            //    //Lives.ForeColor = Color.White;
+
+            //    //while (ColorFadeTimer.Interval > 1)
+            //    //{
+            //    //    ColorFadeTimer.Interval--;
+            //    //}
+
+            //    //if (ColorFadeTimer.Interval == 1)
+            //    //{
+            //    //    Lives.ForeColor = Color.White;
+            //    //    ColorFadeTimer.Stop();
+            //    //}
+
+            //    //Lives.ForeColor = Color.FromArgb(Lives.ForeColor.A, Lives.ForeColor.R, Lives.ForeColor.G, Lives.ForeColor.B);
+            //    //while (Lives.ForeColor == Color.Red)
+            //    //{
+            //    //    Lives.ForeColor = Color.FromArgb(Lives.ForeColor.A, Lives.ForeColor.R, Lives.ForeColor.G + 10, Lives.ForeColor.B + 10);
+            //    //    if (Lives.ForeColor.B >= 255 || Lives.ForeColor.G >= 255)
+            //    //    {
+            //    //        Lives.ForeColor = Color.White;
+            //    //        ColorFadeTimer.Stop();
+            //    //    }
+            //    //}
+            //}
+        }
+
+
         // need a random variable 
         private readonly Random rand = new Random();
         public IAlienModeController AlienMode { get; set; }
@@ -72,6 +117,18 @@ namespace SpaceInvadersGV1
 
             Playfield = new RectangleF(0, 0, 800, 600);
             Player.Bounds = new RectangleF(380, 540, 40, 20);
+
+            // commented out loadsprite due to other stuff for it being commented out
+            //Player.LoadSprite(@"C:\Users\hebba\Desktop\SICloneRepo2\Images\Player.png");
+            Player.LivesLeft = 3;
+
+            Lives.Location = new Point(715, 10);
+            Lives.Size = new Size(100, 20);
+            Lives.Font = new Font("Arial", 12, FontStyle.Bold);
+            Lives.ForeColor = Color.White;
+            Lives.BackColor = Color.Transparent;
+            Lives.BringToFront();
+            LivesUpdate();
 
             AlienMode = new AlienFleetWaveMode(GetFleet());
 
@@ -145,6 +202,9 @@ namespace SpaceInvadersGV1
             {
                 SpawnPlayerBullets();
             }
+
+            // update the current number of lives
+            LivesUpdate();
 
             AlienMode.Update(this, dt);
             //HandlePlayerBulletHits();
@@ -309,12 +369,43 @@ namespace SpaceInvadersGV1
         // firecooldown; is instaticiated 
         private float Firecooldown;
 
+        // initialize lives = 3 (player can be damaged 3 times before death)
+        public float LivesLeft = 3;
+        // initialize IsInvulnerable = false (player can be damaged)
+        private bool IsInvulnerable = false;
+        // initialize invulnerability time = 0 (no invulnerability frames)
+        private float InvulnerabilityTime = 0f;
+        private float BlinkTimer = 0f; // timer for blinking effect when invulnerable
+        private bool BlinkVisible = true; // controls whether the player is visible during blinking
+        private const float BlinkInterval = 0.15f; // interval for blinking effect (e.g., 0.15 seconds)
+
+
+        // player sprite stuff (likely will change)
+        //private Image PlayerSprite;
+
+        //public void LoadSprite(string path)
+        //{
+        //    PlayerSprite?.Dispose(); // dispose of the old sprite if it exists
+        //    PlayerSprite = Image.FromFile(path);
+        //}
+
+        //public void DisposeSprite()
+        //{
+        //    PlayerSprite?.Dispose();
+        //    PlayerSprite = null;
+        //}
+
         // bool value showing if the player shooted
         private bool shotThisFrame = false;
 
 
         public override void Update(TimeSpan dt, Inputstate input, RectangleF Playfield)
         {
+
+            if (IsAlive == false)
+            {
+                return; // skip update if the player is already dead
+            }
 
             // initialize dx = 0 
             float dx = 0;
@@ -350,6 +441,31 @@ namespace SpaceInvadersGV1
                 shotThisFrame = true; // tell gameworld to spawn blet
             }
 
+            if (IsInvulnerable == true)
+            {
+                InvulnerabilityTime -= (float)dt.TotalSeconds;
+                BlinkTimer += (float)dt.TotalSeconds;
+
+                // make player blink when invulnerable (for testing purposes, will be changed later)
+
+                if (BlinkTimer >= BlinkInterval)
+                {
+                    BlinkVisible = !BlinkVisible; // toggle visibility for blinking effect
+                    BlinkTimer = 0f; // reset blink timer
+                }
+
+                if (InvulnerabilityTime <= 0f)
+                {
+                    IsInvulnerable = false; // player is no longer invulnerable after invulnerability time runs out
+                    InvulnerabilityTime = 0f; // reset invulnerability time
+                    BlinkTimer = 0f; // reset blink timer
+                    BlinkVisible = true; // ensure player is visible after invulnerability ends
+                }
+            }
+
+            //// testing damage update logic using FirePressed, will be changed later
+            //if (input.FirePressed)
+            //    PlayerTakesDamage();
 
         }
 
@@ -363,13 +479,68 @@ namespace SpaceInvadersGV1
             shotThisFrame = false;  // consume it
             return true;
 
-
               
         }
 
 
-        public override void Draw(Graphics g) => g.FillRectangle(Brushes.Red, Bounds);
+        //public override void Draw(Graphics g) => g.FillRectangle(Brushes.Red, Bounds);
 
+        // rewritten Draw method to make condition for player to blink when invulnerable
+        public override void Draw(Graphics g)
+        {
+            if (IsInvulnerable == true && BlinkVisible == false)
+            {
+                return; // skip drawing the player to create a blinking effect when invulnerable
+            }
+
+            if (IsAlive == false)
+            {
+                return; // skip drawing to not draw the Player since they are dead
+            }
+
+            // commented out drawimage due to other stuff for loadsprite/player sprite being commented out
+            //if (PlayerSprite != null)
+            //{
+            //    g.DrawImage(PlayerSprite, Bounds);
+            //}
+
+            else
+            {
+                g.FillRectangle(Brushes.Lime, Bounds);
+            }
+
+        }
+
+
+        // damage update logic for the player (for testing purposes, will be changed later)
+        public void PlayerTakesDamage()
+        {
+            if (IsInvulnerable == true || IsAlive == false || LivesLeft <= 0)
+            {
+                return; // player cannot take damage if they are invulnerable, already dead, or have no lives left
+            }
+
+            LivesLeft--;    // reduce lives by 1
+
+            // for upgrade that reduces lives by half
+            // LivesLeft -= 0.5f;    // reduce lives by 0.5
+
+
+            // check if player is dead after taking damage
+            if (LivesLeft <= 0)
+            {
+                LivesLeft = 0;  // prevent negative lives
+                IsAlive = false; // player is now dead
+                IsInvulnerable = true; // player becomes invulnerable because they're already dead
+            }
+
+            else
+            {
+                IsInvulnerable = true; // player becomes invulnerable after taking damage
+                InvulnerabilityTime = 2.0f; // set invulnerability time (e.g., 2 seconds)
+            }
+
+        }
 
     }
 
@@ -968,7 +1139,9 @@ namespace SpaceInvadersGV1
                 {
                     b.IsAlive = false;
                     Debug.WriteLine("Player hit!");
+                    world.Player.PlayerTakesDamage();
                     // later: world.Lives--, set GameOver, etc.
+
                 }
             }
         }
@@ -1028,6 +1201,7 @@ namespace SpaceInvadersGV1
             Fire_was_held_last_frame = Fire_held;
             // implament pause
 
+            // Lives.Text = $"Lives: {Player.LivesLeft}";   // not working, will be changed later
 
         }
 
