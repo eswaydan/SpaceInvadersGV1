@@ -42,6 +42,28 @@ namespace SpaceInvadersGV1
 
             base.OnKeyDown(e);
 
+            // for test purposes of alien fleet contiuous mode
+
+            if (e.KeyCode == Keys.F)
+            {
+
+                // toggle between modes and restart alien setup
+
+                if (_world.AlienMode is AlienContinuousSpawnMode)
+                {
+                    _world.SetAlienMode(new AlienFleetWaveMode(_world.GetFleet()));
+                }
+                else
+                {
+                    _world.SetAlienMode(new AlienContinuousSpawnMode());
+                }
+
+                gamePanel1.Invalidate();
+                return;
+            }
+
+
+            // checking what the user did press by the user 
             if (e.KeyCode == Keys.Left) _world.Input.Left_held = true;
             if (e.KeyCode == Keys.Right) _world.Input.Right_held = true;
             if (e.KeyCode == Keys.Space) _world.Input.Fire_held = true;
@@ -57,7 +79,7 @@ namespace SpaceInvadersGV1
         {
 
             base.OnKeyUp(e);
-
+            // checking what the user did not press by the user 
             if (e.KeyCode == Keys.Left) _world.Input.Left_held = false;
             if (e.KeyCode == Keys.Right) _world.Input.Right_held = false;
             if (e.KeyCode == Keys.Space) _world.Input.Fire_held = false;
@@ -85,7 +107,9 @@ namespace SpaceInvadersGV1
             gamePanel1.Invalidate(); // to see movement
 
             // use this for test cases
-            this.Text = $"L:{_world.Input.Left_held} R:{_world.Input.Right_held} X:{_world.Player.Bounds.X:0}";
+            this.Text = $"L:{_world.Input.Left_held} R:{_world.Input.Right_held} X:{_world.Player.Bounds.X:0} S:{_world.Input.Fire_held} BCount:{_world.Bullets.Count :0}";
+            //this.Text = $"L:{_world.Input.Left_held} R:{_world.Input.Right_held} X:{_world.bullet.Bounds.Y:0}";
+
         }
     }
 }
