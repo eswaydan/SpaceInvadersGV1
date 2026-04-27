@@ -33,7 +33,7 @@ namespace SpaceInvadersGV1
             timer1.Start();
 
             gamePanel1.Focus(); //calls the panel to receive active keyboard input
-            gamePanel1.Controls.Add(_world.Lives);  // add lives to gamePanel
+            //gamePanel1.Controls.Add(_world.Lives);  // add lives to gamePanel
         }
 
 
@@ -108,9 +108,11 @@ namespace SpaceInvadersGV1
             gamePanel1.Invalidate(); // to see movement
 
             // use this for test cases
-            this.Text = $"L:{_world.Input.Left_held} R:{_world.Input.Right_held} X:{_world.Player.Bounds.X:0} S:{_world.Input.Fire_held} BCount:{_world.Bullets.Count :0}";
+            int alienBullets = _world.Bullets.Count(x => x.FromAlien);
+            this.Text = $"L:{_world.Input.Left_held} R:{_world.Input.Right_held} X:{_world.Player.Bounds.X:0} S:{_world.Input.Fire_held} AlienBullets:{alienBullets}  Blocks:{_world.boulders.Sum(b => b.Blocks.Count)} Bullets:{_world.Bullets.Count} Lives:{_world.Player.LivesLeft} Score: {_world.Score}";
+            //this.Text = $"L:{_world.Input.Left_held} R:{_world.Input.Right_held} X:{_world.Player.Bounds.X:0} S:{_world.Input.Fire_held} BCount:{_world.Bullets.Count :0}";
             //this.Text = $"L:{_world.Input.Left_held} R:{_world.Input.Right_held} X:{_world.bullet.Bounds.Y:0}";
-
+            //this.Text = $"Lives:{_world.Player.LivesLeft}  Bullets:{_world.Bullets.Count}";
         }
     }
 }

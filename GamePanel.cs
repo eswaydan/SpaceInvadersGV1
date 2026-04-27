@@ -52,13 +52,208 @@ namespace SpaceInvadersGV1
         public List<Boulder> boulders = new List<Boulder>();
         private readonly List<ICollisionSystem> _collisionSystems = new List<ICollisionSystem>();
 
+        
         // added lives label
-        public Label Lives = new Label();
+        //public Label Lives = new Label();
 
         // update the lives label
+
+        // need a random variable 
+        private readonly Random rand = new Random();
+        public IAlienModeController AlienMode { get; set; }
+        private readonly Alienfleet alienfleet = new Alienfleet();
+        public Alienfleet GetFleet() => alienfleet;
+        public int AlienKillScoreMultiplier => (AlienMode is AlienContinuousSpawnMode) ? 2 : 1;
+
+        private float spawnTimer = 0f;
+   
+        private float alienShottimer = 0f;
+
+        private float alienshotInterval = 1.0f; // only one alien can shoot at a time per sec
+
+
+        public float AlienStopLineY => Player.Bounds.Top - 40f;
+
+        public GameWorld()
+        {
+
+            Playfield = new RectangleF(0, 0, 800, 600);
+            Player.Bounds = new RectangleF(380, 540, 40, 20);
+
+            // commented out loadsprite due to other stuff for it being commented out
+            //Player.LoadSprite(@"C:\Users\hebba\Desktop\SICloneRepo2\Images\Player.png");
+            Player.LivesLeft = 3;
+
+            //Lives.Location = new Point(715, 10);
+            //Lives.Size = new Size(100, 20);
+            //Lives.Font = new Font("Arial", 12, FontStyle.Bold);
+            //Lives.ForeColor = Color.White;
+            //Lives.BackColor = Color.Transparent;
+            //Lives.BringToFront();
+            //LivesUpdate();
+
+            AlienMode = new AlienFleetWaveMode(GetFleet());
+
+            // AlienMode = new AlienFleetWaveMode(alienfleet);
+
+            _collisionSystems.Add(new PlayerBulletVsBoulderCollision());
+            _collisionSystems.Add(new AlienBulletVsBoulderCollision());
+            _collisionSystems.Add(new PlayerBulletVsBottomAlienCollision());
+            _collisionSystems.Add(new AlienBulletVsPlayerCollision());
+            _collisionSystems.Add(new AlienVsBoulderCollision());
+
+
+        }
+
+        public void AddScore(int amount)
+        {
+            if (amount == 0) return;
+            Score = Score + amount;
+            ApplyUpgradesIfNeeded();
+        }
+
+        public void SetAlienMode(IAlienModeController mode)
+        {
+            AlienMode = mode;
+            AlienMode.Start(this); // remake aliens to behave immediately for that mode
+        }
+
+        public void StartNewGame(Size playfieldSize)
+        {
+
+            Playfield = new RectangleF(0, 0, playfieldSize.Width, playfieldSize.Height);
+            Player.Bounds = new RectangleF(playfieldSize.Width / 2f - 20, playfieldSize.Height - 40, 40, 20);
+            //use if wanted to check dimesions if it fits better with the game
+
+            //Playfield = new RectangleF(0, 0, 800, 600);
+            //Player.Bounds = new RectangleF(380, 540, 40, 20);
+
+            // for now hard code boulder dimentions 
+
+            Score = 0;
+
+            Player.Upg_StrongerFaster = false;
+            Player.Upg_Multishot = false;
+            Player.Upg_Defense = false;
+
+            Player.BulletDamage = 5;
+            Player.BulletSpeed = 100f;
+            Player.BulletCount = 1;
+            Player.DamageMultiplierTaken = 1.0f;
+            Player.IsAlive = true;
+            Player.LivesLeft = 3f;
+
+
+            boulders.Clear();
+
+           
+            int boulderCount = 4;
+            float boulderWidth = 60f;
+            float boulderHeight = 30f;
+            float spacing = playfieldSize.Width / (boulderCount + 1f);
+            float boulderY = playfieldSize.Height - 100f;
+
+            for (int i = 1; i <= boulderCount; i++)
+            {
+
+                float centerX = spacing * i;
+
+                var bo = new Boulder
+                {
+                    Bounds = new RectangleF(centerX - boulderWidth / 2f, boulderY, boulderWidth, boulderHeight),
+                    blockSize = 4,
+                    Columns = (int)(boulderWidth / 4),
+                    Rows = (int)(boulderHeight / 4),
+                };
+
+                bo.Build();
+                boulders.Add(bo);
+            }
+
+            spawnTimer = 0f;
+            AlienMode.Start(this);
+
+           
+
+
+        }
+
+        public void Update(TimeSpan dt)
+        {
+            Input.PreUpdateInput();
+           
+            Player.Update(dt, Input, Playfield);
+            // spawn bullets when firing ( holdtofire & cooldown player)
+            if (Player.TryComsumeShot())
+            {
+                SpawnPlayerBullets();
+            }
+
+            // update the current number of lives
+            //LivesUpdate();
+
+            AlienMode.Update(this, dt);
+            //HandlePlayerBulletHits();
+
+            alienShottimer = alienShottimer - (float)dt.TotalSeconds;
+
+            if (alienShottimer <= 0f)
+            {
+                SpawnAlienBullets();
+                alienShottimer = alienshotInterval;
+
+            }
+
+            //update bullets
+            foreach (var b in Bullets)
+                b.Update(dt, Input, Playfield);
+
+            // collisions
+            foreach (var sys in _collisionSystems)
+                sys.Handle(this);
+
+            // clean up bullets 
+            Bullets.RemoveAll(b => !b.IsAlive);
+            Aleins.RemoveAll(a => !a.IsAlive);
+
+            //if (Player.IsAlive && Player.TryComsumeShot())
+               // SpawnPlayerBullets();
+
+            foreach (var B in boulders) B.Update(dt, Input, Playfield);
+
+        }
+
+        // make the aliens to be in a grid formation 
+        public void SpawnAleinsGrid(int rows, int cols)
+        {
+            float alienW = 30, alienH = 20;
+
+            float gapX = 10, gapY = 10;
+
+            float startX = 60;
+            float startY = 40;
+
+            for (int r = 0; r < rows; r++)
+            {
+                for (int c = 0; c < cols; c++)
+                {
+                    int minHealth = 10;
+                    int health = Math.Max(minHealth, (r == 0) ? 15 : (r <= 2 ? 10 : 5));
+
+                    int points = 5;
+
+                    float x = startX + c * (alienW + gapX);
+                    float y = startY + r * (alienH + gapY);
+
+                    Aleins.Add(new Alien { Bounds = new RectangleF(x, y, alienW, alienH), Health = health, Points = points });
+
+                }
+            }
+        }
+
         public void LivesUpdate()
         {
-            Lives.Text = $"Lives: {Player.LivesLeft}";
+            //Lives.Text = $"Lives: {Player.LivesLeft}";
 
             // was trying to make color switch to red then fade to white, but not working
 
@@ -96,167 +291,6 @@ namespace SpaceInvadersGV1
             //}
         }
 
-
-        // need a random variable 
-        private readonly Random rand = new Random();
-        public IAlienModeController AlienMode { get; set; }
-        private readonly Alienfleet alienfleet = new Alienfleet();
-        public Alienfleet GetFleet() => alienfleet;
-
-        private float spawnTimer = 0f;
-   
-        private float alienShottimer = 0f;
-
-        private float alienshotInterval = 1.0f; // only one alien can shoot at a time per sec
-
-
-        public float AlienStopLineY => Player.Bounds.Top - 40f;
-
-        public GameWorld()
-        {
-
-            Playfield = new RectangleF(0, 0, 800, 600);
-            Player.Bounds = new RectangleF(380, 540, 40, 20);
-
-            // commented out loadsprite due to other stuff for it being commented out
-            //Player.LoadSprite(@"C:\Users\hebba\Desktop\SICloneRepo2\Images\Player.png");
-            Player.LivesLeft = 3;
-
-            Lives.Location = new Point(715, 10);
-            Lives.Size = new Size(100, 20);
-            Lives.Font = new Font("Arial", 12, FontStyle.Bold);
-            Lives.ForeColor = Color.White;
-            Lives.BackColor = Color.Transparent;
-            Lives.BringToFront();
-            LivesUpdate();
-
-            AlienMode = new AlienFleetWaveMode(GetFleet());
-
-            // AlienMode = new AlienFleetWaveMode(alienfleet);
-
-            _collisionSystems.Add(new PlayerBulletVsBoulderCollision());
-            _collisionSystems.Add(new PlayerBulletVsBottomAlienCollision());
-            _collisionSystems.Add(new AlienBulletVsPlayerCollision());
-
-
-        }
-
-        public void AddScore(int amount) => Score += amount;
-
-        public void SetAlienMode(IAlienModeController mode)
-        {
-            AlienMode = mode;
-            AlienMode.Start(this); // remake aliens to behave immediately for that mode
-        }
-
-        public void StartNewGame(Size playfieldSize)
-        {
-
-            Playfield = new RectangleF(0, 0, playfieldSize.Width, playfieldSize.Height);
-            Player.Bounds = new RectangleF(playfieldSize.Width / 2f - 20, playfieldSize.Height - 40, 40, 20);
-            //use if wanted to check dimesions if it fits better with the game
-
-            //Playfield = new RectangleF(0, 0, 800, 600);
-            //Player.Bounds = new RectangleF(380, 540, 40, 20);
-
-            // for now hard code boulder dimentions 
-
-
-            boulders.Clear();
-
-           
-            int boulderCount = 4;
-            float boulderWidth = 60f;
-            float boulderHeight = 30f;
-            float spacing = playfieldSize.Width / (boulderCount + 1f);
-            float boulderY = playfieldSize.Height - 100f;
-
-            for (int i = 1; i <= boulderCount; i++)
-            {
-
-                float centerX = spacing * i;
-
-                var bo = new Boulder
-                {
-                    Bounds = new RectangleF(centerX - boulderWidth / 2f, boulderY, boulderWidth, boulderHeight),
-                    blockSize = 4,
-                    Columns = (int)(boulderWidth / 4),
-                    Rows = (int)(boulderHeight / 4),
-                };
-
-                bo.Build();
-                boulders.Add(bo);
-            }
-
-            spawnTimer = 0f;
-            AlienMode.Start(this);
-        }
-
-        public void Update(TimeSpan dt)
-        {
-            Input.PreUpdateInput();
-           
-            Player.Update(dt, Input, Playfield);
-            // spawn bullets when firing ( holdtofire & cooldown player)
-            if (Player.TryComsumeShot())
-            {
-                SpawnPlayerBullets();
-            }
-
-            // update the current number of lives
-            LivesUpdate();
-
-            AlienMode.Update(this, dt);
-            //HandlePlayerBulletHits();
-
-            alienShottimer = alienShottimer - (float)dt.TotalSeconds;
-
-            if (alienShottimer <= 0f)
-            {
-                trySpawnAlienBullets();
-                alienShottimer = alienshotInterval;
-
-            }
-
-            //update bullets
-            foreach (var b in Bullets)
-                b.Update(dt, Input, Playfield);
-
-            // collisions
-            foreach (var sys in _collisionSystems)
-                sys.Handle(this);
-
-            // clean up bullets 
-            Bullets.RemoveAll(b => !b.IsAlive);
-            Aleins.RemoveAll(a => !a.IsAlive);
-
-            foreach (var B in boulders) B.Update(dt, Input, Playfield);
-
-        }
-
-        // make the aliens to be in a grid formation 
-        public void SpawnAleinsGrid(int rows, int cols)
-        {
-            float alienW = 30, alienH = 20;
-
-            float gapX = 10, gapY = 10;
-
-            float startX = 60;
-            float startY = 40;
-
-            for (int r = 0; r < rows; r++)
-            {
-                for (int c = 0; c < cols; c++)
-                {
-                    float x = startX + c * (alienW + gapX);
-                    float y = startY + r * (alienH + gapY);
-
-                    Aleins.Add(new Alien { Bounds = new RectangleF(x, y, alienW, alienH) });
-
-                }
-            }
-        }
-
         private void SpawnPlayerBullets()
         {
 
@@ -266,21 +300,38 @@ namespace SpaceInvadersGV1
             float x = Player.Bounds.X + Player.Bounds.Width / 2f - bulletW / 2f;
             float y = Player.Bounds.Y - bulletH; // bullet will start above player 
 
-            Bullets.Add(new bullet
+            float speed = Player.BulletSpeed;
+            int damage = Player.BulletDamage;
+
+            // multishot conditional (3 bullets at ±20°)
+            bool canUseMultishot = Player.Upg_Multishot && Player.MultishotTimer <= 0f;
+
+            float[] angles = canUseMultishot
+                ? new[] { -20f, 0f, +20f }
+                : new[] { 0f };
+
+            foreach (float ang in angles)
             {
+                var (vx, vy) = FromAngleDegrees(speed, ang);
 
-                Bounds = new RectangleF(x, y, bulletW, bulletH),
-                directionY = -1,
-                Speed = 100f
+                Bullets.Add(new bullet
+                {
+                    Bounds = new RectangleF(x, y, bulletW, bulletH),
+                    VelX = vx,
+                    VelY = vy,
+                    FromAlien = false,
+                    Damage = damage
+                });
+            }
 
-            });
+            if (canUseMultishot)
+                Player.MultishotTimer = Player.MultishotCooldown;
 
             // test spawn marker ( output window) 
             System.Diagnostics.Debug.WriteLine($"Spawn bullet at X={x:0} Y={y:0}");
-
         }
 
-        private void trySpawnAlienBullets ()
+        private void SpawnAlienBullets ()
         {
             var alive = Aleins.Where(a => a.IsAlive).ToList();
             if (alive.Count == 0) return;
@@ -294,9 +345,12 @@ namespace SpaceInvadersGV1
             Bullets.Add(new bullet
             {
                 Bounds = new RectangleF(x, y, w, h),
+                VelX = 0f,
+                VelY = +100f,
                 directionY = +1,
                 Speed = 100f,
-                FromAlien = true
+                FromAlien = true,
+                Damage = 1
 
             });
 
@@ -321,6 +375,44 @@ namespace SpaceInvadersGV1
 
 
         }
+
+        private static (float vx, float vy) FromAngleDegrees(float speed, float degreesFromUp)
+{
+    float rad = degreesFromUp * (float)(Math.PI / 180.0);
+    float vx = speed * (float)Math.Sin(rad);
+    float vy = -speed * (float)Math.Cos(rad); // up is negative Y in WinForms
+    return (vx, vy);
+}
+
+        private void ApplyUpgradesIfNeeded()
+        {
+            // 100 points: stronger + faster bullets
+            if (!Player.Upg_StrongerFaster && Score >= 100)
+            {
+                Player.Upg_StrongerFaster = true;
+                Player.BulletDamage += 5;       // was 5 -> becomes 10
+                Player.BulletSpeed += 80f;      // was 100 -> becomes 180
+            }
+
+            // 500 points: multishot
+            if (!Player.Upg_Multishot && Score >= 500)
+            {
+                Player.Upg_Multishot = true;
+                                                // optional: also boost damage/speed a bit
+                                                // Player.BulletDamage += 2;
+            }
+
+            // 1000 points: defense
+            if (!Player.Upg_Defense && Score >= 1000)
+            {
+                Player.Upg_Defense = true;
+                Player.DamageMultiplierTaken = 0.5f; // take half damage
+            }
+
+            Debug.WriteLine("Unlocked 100pt upgrade!");
+
+        }
+
 
         //public void Update(TimeSpan dt) => Player.Update(dt, Input, Playfield);
         public void Draw(Graphics g)
@@ -365,9 +457,11 @@ namespace SpaceInvadersGV1
         // variables of player
 
         // initialize the speed = 60
-        public float Speed = 60f;
+        public float Speed = 100f;
         // firecooldown; is instaticiated 
         private float Firecooldown;
+        public float MultishotCooldown = 2.0f;   // seconds between multishots
+        public float MultishotTimer = 0f;
 
         // initialize lives = 3 (player can be damaged 3 times before death)
         public float LivesLeft = 3;
@@ -378,6 +472,23 @@ namespace SpaceInvadersGV1
         private float BlinkTimer = 0f; // timer for blinking effect when invulnerable
         private bool BlinkVisible = true; // controls whether the player is visible during blinking
         private const float BlinkInterval = 0.15f; // interval for blinking effect (e.g., 0.15 seconds)
+        public float InvulnerabilityDuration = 2.0f;
+
+        // --- Upgrades / stats ---
+        public int BulletDamage = 5;        // base
+        public float BulletSpeed = 100f;    // base
+        public int BulletCount = 1;         // 1 = normal, 2+ = spread/multi-shot
+        public float BulletSpread = 12f;    // pixels between bullets when multi-shot
+
+        public float DamageMultiplierTaken = 1.0f; // 1.0 = normal damage, <1 = more defense
+
+        // tracks which upgrades are unlocked
+        public bool Upg_StrongerFaster;   // 100 points
+        public bool Upg_Multishot;        // 500 points
+        public bool Upg_Defense;          // 1000 points
+
+
+
 
 
         // player sprite stuff (likely will change)
@@ -439,6 +550,12 @@ namespace SpaceInvadersGV1
             {
                 Firecooldown = 0.25f;
                 shotThisFrame = true; // tell gameworld to spawn blet
+            }
+
+            if (MultishotTimer > 0f)
+            {
+                MultishotTimer -= (float)dt.TotalSeconds;
+                if (MultishotTimer < 0f) MultishotTimer = 0f;
             }
 
             if (IsInvulnerable == true)
@@ -513,25 +630,26 @@ namespace SpaceInvadersGV1
 
 
         // damage update logic for the player (for testing purposes, will be changed later)
-        public void PlayerTakesDamage()
+        public void TakesDamage(float amount = 1f)
         {
             if (IsInvulnerable == true || IsAlive == false || LivesLeft <= 0)
             {
                 return; // player cannot take damage if they are invulnerable, already dead, or have no lives left
             }
 
-            LivesLeft--;    // reduce lives by 1
+            LivesLeft = LivesLeft - amount * DamageMultiplierTaken;  // reduce lives by 1
 
             // for upgrade that reduces lives by half
             // LivesLeft -= 0.5f;    // reduce lives by 0.5
 
 
             // check if player is dead after taking damage
-            if (LivesLeft <= 0)
+            if (LivesLeft <= 0f)
             {
-                LivesLeft = 0;  // prevent negative lives
+                LivesLeft = 0f;  // prevent negative lives
                 IsAlive = false; // player is now dead
                 IsInvulnerable = true; // player becomes invulnerable because they're already dead
+                InvulnerabilityTime = 0f;
             }
 
             else
@@ -558,7 +676,8 @@ namespace SpaceInvadersGV1
         // variables for alien 
 
         // health 
-
+        public int Health = 10;
+        public int Points = 5;
         // points 
 
 
@@ -571,6 +690,17 @@ namespace SpaceInvadersGV1
             // will add code to change the behavior of the alien in fleet 
 
         }
+
+        public void TakeDamage(int damage)
+        {
+            Health = Health - damage;
+            if (Health <= 0)
+            {
+                Health = 0;
+                IsAlive = false;
+            }
+        }
+
 
         public override void Draw(Graphics g) => g.FillRectangle(Brushes.Green, Bounds);
 
@@ -699,7 +829,7 @@ namespace SpaceInvadersGV1
         public void Start(GameWorld world)
         {
             world.Aleins.Clear();
-            world.SpawnAleinsGrid(rows: 5, cols: 5);
+            world.SpawnAleinsGrid(rows: 5, cols:11);
 
             fleet.direction = 1;
             fleet.speed = 40f;
@@ -709,17 +839,45 @@ namespace SpaceInvadersGV1
 
         public void Update(GameWorld world, TimeSpan dt)
         {
+
+            float bottom = GetfleetBottom(world.Aleins);
+
+            float orginalDrop = fleet.dropamount;
+
+            if (bottom != float.MinValue && bottom >= world.AlienStopLineY)
+                fleet.dropamount = 0f;
+            
             fleet.Update(dt, world.Playfield, world.Aleins);
 
             // if we want to respawn a new wave 
 
+
+            fleet.dropamount = orginalDrop;
+
             if (world.Aleins.All(a => !a.IsAlive))
             {
-                world.Aleins.Clear();
-                world.SpawnAleinsGrid(5, 5);
-                fleet.speed *= 1.1f;
+                //world.Aleins.Clear();
+                //world.SpawnAleinsGrid(5, 11);
+                //fleet.speed *= 1.1f;
+
+                Start(world);
 
             }
+        }
+
+        private static float GetfleetBottom(List<Alien> aliens)
+        {
+            float bottom = float.MinValue;
+
+            foreach( var a in aliens)
+            {
+                if (!a.IsAlive) continue;
+                if(a.Bounds.Bottom > bottom) bottom = a.Bounds.Bottom;
+
+            }
+
+            return bottom;
+
         }
 
     }
@@ -729,11 +887,11 @@ namespace SpaceInvadersGV1
 
         private readonly Random random = new Random();
 
-        public float spawnIntervalSpeed = 0.75f;
+        public float spawnIntervalSpeed = 1.25f;
 
-        public float fallSpeed = 60f;
+        public float fallSpeed = 15f;
 
-        public int maxAliensOnScreen = 30;
+        public int maxAliensOnScreen = 5;
 
         private float spawnTimer;
 
@@ -753,8 +911,9 @@ namespace SpaceInvadersGV1
 
             world.Aleins.Add(new Alien
             {
-                Bounds = new RectangleF(x, y, w, h)
-
+                Bounds = new RectangleF(x, y, w, h),
+                Health = 10,   // > 5
+                Points = 20,
             });
 
             
@@ -782,10 +941,17 @@ namespace SpaceInvadersGV1
 
                 if (!ac.IsAlive) continue;
 
+                float dy = fallSpeed * seconds;
+
+
+                //float allowed = world.AlienStopLineY - ac.Bounds.Bottom;
+                //if (allowed < 0) allowed = 0;
+                //if (dy > allowed) dy = allowed;
+
                 ac.Bounds = new RectangleF(
 
                     ac.Bounds.X,
-                    ac.Bounds.Y + fallSpeed * seconds,
+                    ac.Bounds.Y + dy,
                     ac.Bounds.Width,
                     ac.Bounds.Height
 
@@ -806,148 +972,16 @@ namespace SpaceInvadersGV1
 
     }
 
-    public sealed class AlienStraightDownWaveMode : IAlienModeController
-    {
-        private int wave = 0;
 
-        public float fallSpeed = 25f;
-
-
-
-        public void Start(GameWorld world)
-        {
-            wave = wave + 1;
-
-            world.Aleins.Clear();
-            world.SpawnAleinsGrid(rows: 5, cols: 8);
-
-            fallSpeed = 25f + 2f * (wave - 1);
-
-
-        }
-
-        public void Update(GameWorld world, TimeSpan dt)
-        {
-
-
-            float dy = fallSpeed * (float)dt.TotalSeconds;
-
-            float bottom = GameWorld.GetFleetBottom(world.Aleins);
-            if (bottom == float.MinValue)
-            {
-                Start(world);
-                return;
-            }
-
-            float allowed = world.AlienStopLineY - bottom;
-            if (allowed < 0) allowed = 0;
-            if (dy > allowed) dy = allowed;
-
-            foreach (var a in world.Aleins)
-            {
-                if (!a.IsAlive) continue;
-                a.Bounds = new RectangleF(a.Bounds.X, a.Bounds.Y + dy, a.Bounds.Width, a.Bounds.Height);
-            }
-
-            if (world.Aleins.All(a => !a.IsAlive))
-                Start(world);
-
-
-
-        }
-
-
-
-
-    }
-
-
-        //public sealed class AlienFleetSlowDropMode : IAlienModeController
-        //{
-        //    private int dir = 1;
-        //    private float speed = 40f;         // horizontal speed
-        //    private float dropAmount = 10f;    // smaller drops feel “slow”
-        //    private float dropTimer = 0f;
-        //    private float dropInterval = 1.25f; // drop every 1.25s (tune)
-
-        //    private int wave = 0;
-
-
-        //    public void Start(GameWorld world)
-        //    {
-        //        wave = wave + 1;
-        //        world.Aleins.Clear();
-        //        world.SpawnAleinsGrid(rows: 5, cols: 8);
-
-        //        dir = 1;
-        //        speed = 35f + 3f * (wave - 1);
-        //        dropTimer = 0f;
-
-        //    }
-
-        //    private static void MoveAliens(List<Alien> aliens, float dx, float dy)
-        //    {
-        //        foreach (var a in aliens)
-        //        {
-        //            if (!a.IsAlive) continue;
-        //            a.Bounds = new RectangleF(a.Bounds.X + dx, a.Bounds.Y + dy, a.Bounds.Width, a.Bounds.Height);
-
-
-        //        }
-
-        //    }
-
-        //    private static bool TryGetFleetBounds(List<Alien> aliens, out RectangleF bounds)
-        //    {
-        //        bool any = false;
-
-        //        float left = 0, right = 0, top = 0, bottom = 0;
-
-        //        foreach(var a in aliens)
-        //        {
-        //            if (!a.IsAlive) continue;
-
-        //            var b = a.Bounds;
-
-        //            if (!any)
-        //            {
-        //                any = true;
-
-        //                left = b.Left; right = b.Right; top = b.Top; bottom = b.Bottom;
-
-
-        //            }
-        //            else
-        //            {
-        //                if (b.Left < left) left = b.Left;
-        //                if (b.Right > right) right = b.Right;
-        //                if (b.Top < top) top = b.Top;
-        //                if (b.Bottom > bottom) bottom = b.Bottom;
-
-
-        //            }
-
-
-        //        }
-
-        //        bounds = any ? RectangleF.FromLTRB(left, top, right, bottom) : RectangleF.Empty;
-        //        return any;
-
-        //    }
-
-        //    public void Update (GameWorld world, TimeSpan dt)
-        //    {
-
-        //        //horizontal + timed drop logic 
-        //    }
-
-        //}
 
 
         public class bullet : GameObject
     {
         // initialize the speed = 60
         public float Speed = 60f;
+
+        public float VelX = 0f;
+        public float VelY = -100f;
 
         // firecooldown; is instaticiated 
 
@@ -957,7 +991,7 @@ namespace SpaceInvadersGV1
 
         //private float Firecooldown;
 
-
+        public int Damage = 5; // player bullet does 5 damage by default
 
         public int Health = 3;
         public void TakeHit()
@@ -970,13 +1004,13 @@ namespace SpaceInvadersGV1
         public override void Update(TimeSpan dt, Inputstate Input, RectangleF Playfield)
         {
 
-            float dy = directionY * Speed * (float)dt.TotalSeconds;
+            float s = (float)dt.TotalSeconds;
 
-            Bounds = new RectangleF(Bounds.X, Bounds.Y + dy, Bounds.Width, Bounds.Height);
+            Bounds = new RectangleF(Bounds.X + VelX * s, Bounds.Y + VelY * s, Bounds.Width, Bounds.Height);
 
 
             // if the bullet is outside of the playfield, delete instance
-            if (Bounds.Bottom < Playfield.Top || Bounds.Top > Playfield.Bottom)
+            if (Bounds.Bottom < Playfield.Top || Bounds.Top > Playfield.Bottom || Bounds.Right < Playfield.Left || Bounds.Left > Playfield.Right)
                 IsAlive = false;
 
             //// conditionals on how user input will change dx
@@ -987,7 +1021,14 @@ namespace SpaceInvadersGV1
 
         }
 
-       public override void Draw(Graphics g) => g.FillRectangle(Brushes.Pink, Bounds);
+
+        public override void Draw(Graphics g) {
+
+            Brush brush = FromAlien ? Brushes.Orange : Brushes.Pink;
+            
+            g.FillRectangle(brush, Bounds);
+        
+        }
 
     }
 
@@ -1063,6 +1104,26 @@ namespace SpaceInvadersGV1
 
         }
 
+        public bool intersectsAnyBlock(RectangleF r)
+        {
+            for( int i = 0; i < Blocks.Count; i++)
+            {
+                if (Blocks[i].IntersectsWith(r))
+                {
+                    return true;
+                }
+
+
+            }
+
+            return false;
+        }
+
+        public void DamageByRect(RectangleF area)
+        {
+            Blocks.RemoveAll(b => b.IntersectsWith(area));
+            IsAlive = Blocks.Count > 0;
+        }
 
     }
 
@@ -1079,6 +1140,8 @@ namespace SpaceInvadersGV1
         public abstract void Handle(GameWorld world);
 
     }
+
+    // add logic that allows only three aliens to go past the playfield before the player dies.
 
     public sealed class PlayerBulletVsBottomAlienCollision: CollisionSystemBase
     {
@@ -1099,8 +1162,14 @@ namespace SpaceInvadersGV1
                     {
 
                         b.IsAlive = false;
-                        target.IsAlive = false;
-                        world.AddScore(10);
+
+                        Debug.WriteLine($"Hit alien with HP={target.Health}, bulletDamage={b.Damage}");
+
+                        //int oldHealth = target.Health;
+                        target.TakeDamage(b.Damage);
+
+                        if (!target.IsAlive) // died this hit
+                            world.AddScore(target.Points * world.AlienKillScoreMultiplier);
                         break;
                     }
                 }
@@ -1138,9 +1207,10 @@ namespace SpaceInvadersGV1
                if(Hit(b.Bounds, world.Player.Bounds))
                 {
                     b.IsAlive = false;
-                    Debug.WriteLine("Player hit!");
-                    world.Player.PlayerTakesDamage();
+                   // Debug.WriteLine("Player hit!");
+                    world.Player.TakesDamage(1f);
                     // later: world.Lives--, set GameOver, etc.
+                    Debug.WriteLine($"Player hit! Lives now: {world.Player.LivesLeft}");
 
                 }
             }
@@ -1166,8 +1236,12 @@ namespace SpaceInvadersGV1
 
                     if (!Hit(b.Bounds, bo.Bounds)) continue;
 
+
+                    if(!bo.intersectsAnyBlock(b.Bounds)) continue;
+
                     b.IsAlive = false;
                     bo.DamageAt(hitPoint, radius: 10f);
+                    break;
  
                 }
 
@@ -1177,8 +1251,57 @@ namespace SpaceInvadersGV1
     }
 
 
+    public sealed class AlienBulletVsBoulderCollision : CollisionSystemBase
+    {
+        public override void Handle(GameWorld world)
+        {
+            foreach( var b in world.Bullets)
+            {
+                if (!b.IsAlive || !b.FromAlien) continue;
+
+                var hitPoint = new PointF(b.Bounds.X + b.Bounds.Width / 2f, b.Bounds.Y + b.Bounds.Height / 2f);
+
+                foreach ( var bo in world.boulders)
+                {
+                    if (!bo.IsAlive) continue;
+
+                    if (!Hit(b.Bounds, bo.Bounds)) continue;
+
+                    if (!bo.intersectsAnyBlock(b.Bounds)) continue;
+
+                    b.IsAlive = false;
+                    bo.DamageAt(hitPoint, radius: 8f);
+                    break;
 
 
+                }
+            }
+        }
+    }
+
+    public sealed class AlienVsBoulderCollision : CollisionSystemBase
+    {
+        public override void Handle(GameWorld world)
+        {
+            foreach (var a in world.Aleins)
+            {
+                if (!a.IsAlive) continue;
+
+                foreach (var bo in world.boulders)
+                {
+                    if (!bo.IsAlive) continue;
+
+                    // broad-phase: alien overlaps boulder bounds?
+                    if (!Hit(a.Bounds, bo.Bounds)) continue;
+
+                    //if (a.Bounds.Bottom < bo.Bounds.Top) continue; // not yet touching shield area
+
+                    // remove blocks that intersect the alien rectangle
+                    bo.DamageByRect(a.Bounds);
+                }
+            }
+        }
+    }
 
     // Inputstate holds the user's inputs (Shows what the user is trying to do) 
     public sealed class Inputstate
