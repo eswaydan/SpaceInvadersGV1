@@ -16,7 +16,7 @@
         * .NET desktop development
         * WinUI application development
 
-### Downloading and Instructions:
+## Downloading and Instructions:
 1. Download and install Visual Studio Community 2022 (or higher): https://visualstudio.microsoft.com/downloads/
    * When installing Visual Studio Community, select the following Workloads in the Installer:
       * .NET desktop development
