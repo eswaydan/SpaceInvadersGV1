@@ -23,9 +23,9 @@
       * WinUI application development
 2. Select the green "<> Code" button on this repository's page.
 3. Do 1 of the following:
-   A. Manually clone the repository yourself using the web URL: https://github.com/eswaydan/SpaceInvadersGV1.git
-   B. Select "Open with Visual Studio" (will prompt you to clone the repository like in option A)
-   C. Select "Download ZIP" and unzip the downloaded folder in your desired location.
+   - A. Manually clone the repository yourself using the web URL: https://github.com/eswaydan/SpaceInvadersGV1.git
+   - B. Select "Open with Visual Studio" (will prompt you to clone the repository like in option A)
+   - C. Select "Download ZIP" and unzip the downloaded folder in your desired location.
 4. After Step 3, either double-click the SpaceInvadersGV1.sln file or right-click and select "Open" to open it in Visual Studio.
 5. Select "Build" from the drop-down menu at the top of Visual Studio and pick "Build Solution" (or hit the F7 key).
 6. Select the "Start" button (green filled arrow is next to it) to run the game.
