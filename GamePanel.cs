@@ -297,12 +297,12 @@ namespace SpaceInvadersGV1
 
                     // assign alien type based on row ( top row is strongest, bottom row is weakest)
                     if (r < 1) type = AlienType.Squid;    // rows 0
-                    else if (r < 4) type = AlienType.Crab;  // rows 2, 3
-                    else type = AlienType.Octopus;            // row 4
+                    else if (r < 3) type = AlienType.Crab;  // rows 1, 2
+                    else type = AlienType.Octopus;            // row 3
 
                     // health and points based on alien type
-                    int health = (type == AlienType.Squid) ? 15 : (type == AlienType.Crab) ? 10 : (type == AlienType.Octopus) ? 5 : 10;
-                    int points = (type == AlienType.Squid) ? 30 : (type == AlienType.Crab) ? 20 : (type == AlienType.Octopus) ? 10 : 5;
+                    int health = (type == AlienType.Squid) ? 25 : (type == AlienType.Crab) ? 15 : (type == AlienType.Octopus) ? 10 : 10;
+                    int points = (type == AlienType.Squid) ? 20 : (type == AlienType.Crab) ? 10 : (type == AlienType.Octopus) ? 5: 5;
 
                     float x = startX + c * (alienW + gapX);
                     float y = startY + r * (alienH + gapY);
