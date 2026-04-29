@@ -21,8 +21,6 @@ namespace SpaceInvadersGV1
     public partial class GamePanel : Panel
     {
 
-       
-
         public GameWorld World { get; set; }
 
         public GamePanel()
@@ -98,8 +96,7 @@ namespace SpaceInvadersGV1
             Playfield = new RectangleF(0, 0, 800, 600);
             Player.Bounds = new RectangleF(380, 540, 40, 20);
 
-            // commented out loadsprite due to other stuff for it being commented out
-            //Player.LoadSprite(@"C:\Users\hebba\Desktop\SICloneRepo2\Images\Player.png");
+          
             Player.LivesLeft = 3;
 
             AlienMode = new AlienFleetWaveMode(GetFleet());
@@ -466,16 +463,16 @@ namespace SpaceInvadersGV1
             // update the lives label
 
 #if DEBUG
-            using (var font = new Font("Consolas", 10))
-            {
-                g.DrawString(
-                    $"Score: {Score}\n" ,
+            //using (var font = new Font("Consolas", 10))
+            //{
+                //g.DrawString(
+                    //$"Score: {Score}\n",
                     //$"Lives: {Player.LivesLeft:0.0}\n" +
                     //$"Upg100:{Player.Upg_StrongerFaster} Upg500:{Player.Upg_Multishot} Upg1000:{Player.Upg_Defense}\n" +
                     //$"Dmg:{Player.BulletDamage} Spd:{Player.BulletSpeed:0} \n" +
                     //$"Bullets:{Bullets.Count} Aliens:{Aleins.Count(a => a.IsAlive)}",
-                    font, Brushes.White, 5, 30);
-            }
+                    //font, Brushes.White, 5, 30);
+            //}
 #endif
             using (var font = new Font("Arial", 12, FontStyle.Bold))
             {
@@ -915,7 +912,11 @@ namespace SpaceInvadersGV1
             float orginalDrop = fleet.dropamount;
 
             if (bottom != float.MinValue && bottom >= world.AlienStopLineY)
-                fleet.dropamount = 0f;
+            {
+                //fleet.dropamount = 0f;
+                world.GameOverNow();
+                return;
+            }
             
             fleet.Update(dt, world.Playfield, world.Aleins);
 
