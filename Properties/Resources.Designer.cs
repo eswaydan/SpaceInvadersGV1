@@ -118,11 +118,12 @@ namespace SpaceInvadersGV1.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to .
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        internal static string String1 {
+        internal static System.Drawing.Bitmap Squid1 {
             get {
-                return ResourceManager.GetString("String1", resourceCulture);
+                object obj = ResourceManager.GetObject("Squid1", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
             }
         }
     }

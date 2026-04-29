@@ -18,6 +18,8 @@ namespace SpaceInvadersGV1
     public enum ModeChoice { FleetWaves, Continuous }
     public enum GameState { Title, Playing, Paused, GameOver }
 
+    public enum AlienType { Octopus, Crab, Squid }
+
     public partial class GamePanel : Panel
     {
 
@@ -40,12 +42,13 @@ namespace SpaceInvadersGV1
     }
 
 
-    // Sprites for the Player and 2 Aliens (so that we load them once)
+    // Sprites for the Player and 3 Aliens (so that we load them once)
     public static class Sprites
     {
         public static readonly Image PlayerSprite = Properties.Resources.Player;
         public static readonly Image Alien1Sprite = Properties.Resources.Octopus1;
         public static readonly Image Alien2Sprite = Properties.Resources.Crab1;
+        public static readonly Image Alien3Sprite = Properties.Resources.Squid1;
     }
   
     public class GameWorld
@@ -285,15 +288,26 @@ namespace SpaceInvadersGV1
             {
                 for (int c = 0; c < cols; c++)
                 {
-                    int minHealth = 10;
-                    int health = Math.Max(minHealth, (r == 0) ? 15 : (r <= 2 ? 10 : 5));
+                    //int minHealth = 10;
+                    //int health = Math.Max(minHealth, (r == 0) ? 15 : (r <= 2 ? 10 : 5));
 
-                    int points = 5;
+                    //int points = 5;
+
+                    AlienType type;
+
+                    // assign alien type based on row ( top row is strongest, bottom row is weakest)
+                    if (r < 1) type = AlienType.Squid;    // rows 0
+                    else if (r < 4) type = AlienType.Crab;  // rows 2, 3
+                    else type = AlienType.Octopus;            // row 4
+
+                    // health and points based on alien type
+                    int health = (type == AlienType.Squid) ? 15 : (type == AlienType.Crab) ? 10 : (type == AlienType.Octopus) ? 5 : 10;
+                    int points = (type == AlienType.Squid) ? 30 : (type == AlienType.Crab) ? 20 : (type == AlienType.Octopus) ? 10 : 5;
 
                     float x = startX + c * (alienW + gapX);
                     float y = startY + r * (alienH + gapY);
 
-                    Aleins.Add(new Alien { Bounds = new RectangleF(x, y, alienW, alienH), Health = health, Points = points });
+                    Aleins.Add(new Alien { Bounds = new RectangleF(x, y, alienW, alienH), Health = health, Points = points, Type = type });
 
                 }
             }
@@ -722,6 +736,8 @@ namespace SpaceInvadersGV1
 
         // variables for alien 
 
+        public AlienType Type;
+
         // health 
         public int Health = 10;
         // points 
@@ -753,11 +769,33 @@ namespace SpaceInvadersGV1
         // rewritten Alien Draw
         public override void Draw(Graphics g)
         {
-            // load the Octopus1 sprite for the aliens
-            if (Sprites.Alien1Sprite != null)
+            Image sprite = null;
+
+            switch (Type)
             {
-                g.DrawImage(Sprites.Alien1Sprite, Bounds);
+                case AlienType.Octopus:
+                    sprite = Sprites.Alien1Sprite;
+                    break;
+
+                case AlienType.Crab:
+                    sprite = Sprites.Alien2Sprite;
+                    break;
+
+                case AlienType.Squid:
+                    sprite = Sprites.Alien3Sprite;
+                    break;
             }
+
+            if (sprite != null)
+            {
+                g.DrawImage(sprite, Bounds);
+            }
+
+            //// load the Octopus1 sprite for the aliens
+            //if (Sprites.Alien1Sprite != null)
+            //{
+            //    g.DrawImage(Sprites.Alien1Sprite, Bounds);
+            //}
             else
             {
                 g.FillRectangle(Brushes.Green, Bounds);
