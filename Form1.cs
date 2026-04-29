@@ -57,6 +57,26 @@ namespace SpaceInvadersGV1
 
             base.OnKeyDown(e);
 
+            // Pause and unpause game on "ESC" key
+            if (e.KeyCode == Keys.Escape)
+            {
+                if (_world.State == GameState.Playing || _world.State == GameState.Paused)
+                {
+                    ClearInput();
+                    _world.TogglePause();
+                    UpdateUiForState();
+                }
+                else if (_world.State == GameState.GameOver)
+                {
+                    ClearInput();
+                    _world.GoToTitle();
+                    UpdateUiForState();
+                    gamePanel1.Invalidate();
+                }
+                gamePanel1.Focus(); // return focus to the panel after handling pause/gameover
+                return; // exit early since we've handled this key
+            }
+
             // for test purposes of alien fleet contiuous mode
 
 #if DEBUG
