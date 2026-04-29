@@ -41,6 +41,14 @@ namespace SpaceInvadersGV1
         }
     }
 
+
+    // Sprites for the Player and 2 Aliens (so that we load them once)
+    public static class Sprites
+    {
+        public static readonly Image PlayerSprite = Properties.Resources.Player;
+        public static readonly Image Alien1Sprite = Properties.Resources.Octopus1;
+        public static readonly Image Alien2Sprite = Properties.Resources.Crab1;
+    }
   
     public class GameWorld
     {
@@ -548,6 +556,9 @@ namespace SpaceInvadersGV1
         //    PlayerSprite = null;
         //}
 
+        // load player sprite from resources
+        //private Image PlayerSprite = Properties.Resources.Player;
+
         // bool value showing if the player shooted
         private bool shotThisFrame = false;
 
@@ -658,15 +669,15 @@ namespace SpaceInvadersGV1
                 return; // skip drawing to not draw the Player since they are dead
             }
 
-            // commented out drawimage due to other stuff for loadsprite/player sprite being commented out
-            //if (PlayerSprite != null)
-            //{
-            //    g.DrawImage(PlayerSprite, Bounds);
-            //}
+            // load the PlayerSprite from Resources.resx
+            if (Sprites.PlayerSprite != null)
+            {
+                g.DrawImage(Sprites.PlayerSprite, Bounds);
+            }
 
             else
             {
-                g.FillRectangle(Brushes.Lime, Bounds);
+                g.FillRectangle(Brushes.Lime, Bounds);    
             }
 
         }
@@ -719,7 +730,7 @@ namespace SpaceInvadersGV1
         // points 
         public int Points = 5;
 
-
+        //private Image AlienSprite = Properties.Resources.Octopus1;
 
         // methods for alien 
 
@@ -740,8 +751,21 @@ namespace SpaceInvadersGV1
         }
 
 
-        public override void Draw(Graphics g) => g.FillRectangle(Brushes.Green, Bounds);
+        // public override void Draw(Graphics g) => g.FillRectangle(Brushes.Green, Bounds);
 
+        // rewritten Alien Draw
+        public override void Draw(Graphics g)
+        {
+            // load the Octopus1 sprite for the aliens
+            if (Sprites.Alien1Sprite != null)
+            {
+                g.DrawImage(Sprites.Alien1Sprite, Bounds);
+            }
+            else
+            {
+                g.FillRectangle(Brushes.Green, Bounds);
+            }
+        }
     }
 
 
