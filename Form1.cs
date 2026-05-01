@@ -24,34 +24,33 @@ namespace SpaceInvadersGV1
         {
             InitializeComponent();
 
+
+            // make sure that lives and pause are visuable  
             lblLives.BringToFront();
             lblPause.BringToFront();
 
-
-
-
+            // use draw mode to make the list centered  
             lstScores.DrawMode = DrawMode.OwnerDrawFixed;
             lstScores.DrawItem += lstScores_DrawItem;
 
+            // take note to change of game state
             _lastState = _world.State;
             UpdateUiForState();
-
             KeyPreview = true; // makes sure that key data is retreived
             gamePanel1.World = _world;
 
-           // _world.StartNewGame(gamePanel1.ClientSize);
-
+        
+            // take note of change of frame
             last = DateTime.UtcNow; // last frame
             timer1.Interval = 16; // use a mix of timer and dt to acumulate data 
             timer1.Start();
 
             UpdateUiForState();
             gamePanel1.Focus(); //calls the panel to receive active keyboard input
-            //gamePanel1.Controls.Add(_world.Lives);  // add lives to gamePanel
         }
 
 
-
+        // method that takes in the key input that is pressed/clicked by the user and do actions accordingly 
         protected override void OnKeyDown(KeyEventArgs e)
         {
 
@@ -60,18 +59,19 @@ namespace SpaceInvadersGV1
             // Pause and unpause game on "ESC" key
             if (e.KeyCode == Keys.Escape)
             {
+                // if state is playing and or paused 
                 if (_world.State == GameState.Playing || _world.State == GameState.Paused)
                 {
                     ClearInput();
-                    _world.TogglePause();
+                    _world.TogglePause(); // pause
                     UpdateUiForState();
                 }
-                else if (_world.State == GameState.GameOver)
+                else if (_world.State == GameState.GameOver) 
                 {
                     ClearInput();
                     _world.GoToTitle();
                     UpdateUiForState();
-                    gamePanel1.Invalidate();
+                    gamePanel1.Invalidate(); 
                 }
                 gamePanel1.Focus(); // return focus to the panel after handling pause/gameover
                 return; // exit early since we've handled this key
@@ -92,7 +92,7 @@ namespace SpaceInvadersGV1
             }
 #endif
             
-            if (_world.State != GameState.Playing)
+            if (_world.State != GameState.Playing) // if state is not playing ignore taking in left, right, space data
                 return;
 
             // checking what the user did press by the user 
@@ -127,6 +127,7 @@ namespace SpaceInvadersGV1
 
         }
 
+        
         protected override void OnKeyUp(KeyEventArgs e)
         {
 
@@ -165,33 +166,26 @@ namespace SpaceInvadersGV1
 
             }
 
-           // lblScore.Text = $"Score: {_world.Score}";
-
             // added lives label
 
             // update the lives label
             lblLives.Text = $"Lives: {_world.Player.LivesLeft:0.0}";
 
+            // check change in states ( if states did change) 
             if (_world.State != _lastState)
             {
                 _lastState = _world.State;
 
-                if (_world.State == GameState.GameOver)
+                if (_world.State == GameState.GameOver) // if state changed to gameover
                 {
                     
-                    PopulateScoreboard();
-                    lblFinalScore.Text = $"Final Score: {_world.Score}";
+                    PopulateScoreboard(); // add score to score board 
+                    lblFinalScore.Text = $"Final Score: {_world.Score}"; // display the current session score in gameover state
                 }
 
-                UpdateUiForState();
-                
-
-                   
+                UpdateUiForState(); // check again for change in state --> update UI accordingly
+       
             }
-
-
-
-
 
             gamePanel1.Invalidate(); // to see movement
 
@@ -207,25 +201,26 @@ namespace SpaceInvadersGV1
 
         private void btnStart_Click(object sender, EventArgs e)
         {
-            ClearInput();
-            lblLives.BringToFront();
-            _world.StartNewGame(gamePanel1.ClientSize);
-            UpdateUiForState();
-            gamePanel1.Invalidate();
+            ClearInput(); 
+            lblLives.BringToFront(); 
+            _world.StartNewGame(gamePanel1.ClientSize); // build game display 
+            UpdateUiForState(); // check for game state change 
+            gamePanel1.Invalidate(); // see movement 
 
-            gamePanel1.Focus();
+            gamePanel1.Focus(); // gain focus to input from game panel 
         }
 
         private void btnPause_Click(object sender, EventArgs e)
         {
             ClearInput();
-            _world.TogglePause();
-            UpdateUiForState();
+            _world.TogglePause(); // build pause display 
+            UpdateUiForState(); // check game state 
             gamePanel1.Focus();
         }
 
         private void UpdateUiForState()
         {
+            // UI game states 
             bool onTitle = _world.State == GameState.Title;
             bool playingOrPaused = _world.State == GameState.Playing || _world.State == GameState.Paused;
             bool onGameOver = _world.State == GameState.GameOver;
@@ -258,6 +253,7 @@ namespace SpaceInvadersGV1
         }
 
 
+        // method deals with how the leaderboard will show up in display
         private void lstScores_DrawItem(object sender, DrawItemEventArgs e)
         {
             e.DrawBackground();
@@ -279,10 +275,11 @@ namespace SpaceInvadersGV1
             e.DrawFocusRectangle();
         }
 
+        // add scores to the list of sessionscores collected throughout game session
         private void PopulateScoreboard()
         {
             lstScores.BeginUpdate();
-            try
+            try // getting the top score --> display scores in order of highest score to lowest
             {
                 lstScores.Items.Clear();
                 for (int i = 0; i < Math.Min(10, _world.SessionScores.Count); i++)
@@ -290,12 +287,12 @@ namespace SpaceInvadersGV1
             }
             finally
             {
-                lstScores.EndUpdate();
+                lstScores.EndUpdate(); // always end updating the list of scores 
             }
         }
 
 
-
+        // helper method clear user key input 
         private void ClearInput()
         {
             _world.Input.Left_held = false;
@@ -303,24 +300,25 @@ namespace SpaceInvadersGV1
             _world.Input.Fire_held = false;
         }
 
-
         private void btnTitle_Click(object sender, EventArgs e)
         {
-            _world.GoToTitle();
+            _world.GoToTitle(); // build title screen components 
             UpdateUiForState();
             gamePanel1.Invalidate();
             gamePanel1.Focus();
         }
 
+
         private void btnMode_Click(object sender, EventArgs e)
         {
             if (_world.State != GameState.Title) return;
 
+            // use ternary operator to change the mode of gameplay based on modechoice 
             _world.SelectedMode = (_world.SelectedMode == ModeChoice.FleetWaves)
                 ? ModeChoice.Continuous
                 : ModeChoice.FleetWaves;
 
-            lblMode.Text = $"Mode: {_world.SelectedMode}";
+            lblMode.Text = $"Mode: {_world.SelectedMode}"; // display mode chosen
         }
 
         private void btnExit_Click(object sender, EventArgs e)

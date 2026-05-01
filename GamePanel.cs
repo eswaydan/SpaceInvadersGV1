@@ -319,6 +319,8 @@ namespace SpaceInvadersGV1
                 }
             }
         }
+
+        // method connects the bullet to player allowing the player to shoot the bullet
         private void SpawnPlayerBullets()
         {
 
@@ -369,17 +371,21 @@ namespace SpaceInvadersGV1
 #endif
         }
 
+        // method handles aliens ability to shoot bullets 
         private void SpawnAlienBullets ()
         {
-            var alive = Aleins.Where(a => a.IsAlive).ToList();
+            //shuffle through aliens add the alien that are alive to a list of alive only aliens 
+            var alive = Aleins.Where(a => a.IsAlive).ToList(); 
             if (alive.Count == 0) return;
 
-            var shooter = alive[rand.Next(alive.Count)];
+            // shuffle through alive aliens and randomly all an alien to shoot using random  
+            var shooter = alive[rand.Next(alive.Count)]; 
 
             float w = 4f, h = 10f;
             float x = shooter.Bounds.X + shooter.Bounds.Width / 2f - w / 2f;
             float y = shooter.Bounds.Bottom;
 
+            // add a straight shot bullet tied to the location of the alien to bullets list
             Bullets.Add(new bullet
             {
                 Bounds = new RectangleF(x, y, w, h),
@@ -392,14 +398,17 @@ namespace SpaceInvadersGV1
 
         }
 
-        private static (float vx, float vy) FromAngleDegrees(float speed, float degreesFromUp)
+        //method uses pythagorean theorem and unit vectors to implement shooting offset 
+        // vx = horizontal velocity, vy = vertical velocity 
+        private static (float vx, float vy) FromAngleDegrees(float speed, float degreesFromUp) // return a tuple of 2 velocity 
         {
-            float rad = degreesFromUp * (float)(Math.PI / 180.0);
-            float vx = speed * (float)Math.Sin(rad);
-            float vy = -speed * (float)Math.Cos(rad); // up is negative Y in WinForms
-            return (vx, vy);
+            float rad = degreesFromUp * (float)(Math.PI / 180.0); // sin(0) = 0 meaning that there should not be any side ways movement 
+            float vx = speed * (float)Math.Sin(rad); // is positive so x velocity move right 
+            float vy = -speed * (float)Math.Cos(rad); // up is negative Y velocity in WinForms --> y moves left 
+            return (vx, vy); // return tuple 
         }
 
+        // Important method that allows the upgrades to happen depending on score threshold 
         private void ApplyUpgradesIfNeeded()
         {
             // 100 points: stronger + faster bullets
@@ -441,6 +450,7 @@ namespace SpaceInvadersGV1
         internal void DebugRecalcUpgrades() => ApplyUpgradesIfNeeded();
 #endif
 
+        // method that draws all the sprites 
         public void Draw(Graphics g)
         {
             if (State == GameState.Title || State == GameState.GameOver)
@@ -535,12 +545,15 @@ namespace SpaceInvadersGV1
         // bool value showing if the player shooted
         private bool shotThisFrame = false;
 
+#if DEBUG
         public void DebugSetLives(float lives)
         {
             LivesLeft = Math.Max(0f, lives);
             if (LivesLeft > 0f) IsAlive = true;
         }
+#endif
 
+        // update method role to move the player left and right on each frame horizonatally 
         public override void Update(TimeSpan dt, Inputstate input, RectangleF Playfield)
         {
 
@@ -584,13 +597,13 @@ namespace SpaceInvadersGV1
                 shotThisFrame = true; // tell gameworld to spawn bullet
             }
 
-            if (MultishotTimer > 0f)
+            if (MultishotTimer > 0f) // conditional to make sure that the player can not spam multishoot 
             {
                 MultishotTimer = MultishotTimer - (float)dt.TotalSeconds;
                 if (MultishotTimer < 0f) MultishotTimer = 0f;
             }
 
-            if (IsInvulnerable == true)
+            if (IsInvulnerable == true) 
             {
                 InvulnerabilityTime = InvulnerabilityTime - (float)dt.TotalSeconds;
                 BlinkTimer += (float)dt.TotalSeconds;
@@ -613,6 +626,7 @@ namespace SpaceInvadersGV1
             }
         }
 
+        // method that holds the logic for the player to eat the shot of a bullet, in practice the alien.  
         public bool TryComsumeShot()
         {
 
@@ -709,10 +723,11 @@ namespace SpaceInvadersGV1
 
         }
 
+        // method that handles decreasing the health of individual aliens
         public void TakeDamage(int damage)
         {
             Health = Health - damage;
-            if (Health <= 0)
+            if (Health <= 0) // alien's health has fully depleted mark alien unalive. 
             {
                 Health = 0;
                 IsAlive = false;
@@ -1147,21 +1162,24 @@ namespace SpaceInvadersGV1
             return false;
         }
 
+        // method that prompts list of block to be removed that in the hit zone from bullet
         public void DamageByRect(RectangleF area)
         {
             Blocks.RemoveAll(b => b.IntersectsWith(area));
-            IsAlive = Blocks.Count > 0;
+            IsAlive = Blocks.Count > 0; // boulder stays alive if there are blocks still there 
         }
 
     }
 
+
+    // ICollisition Interface helps with organizing collsion system
     public interface ICollisionSystem
     {
         void Handle(GameWorld world);
 
     }
 
-
+    // abstract class allows the collsions to include a hit property to all the collsions so that interactions are checked real time. 
     public abstract class CollisionSystemBase: ICollisionSystem
     {
         protected static bool Hit(RectangleF a, RectangleF b) => a.IntersectsWith(b);
@@ -1222,16 +1240,17 @@ namespace SpaceInvadersGV1
         }
     }
 
-
+    // method that deals with the player taking damage from an alien 
     public sealed class AlienBulletVsPlayerCollision : CollisionSystemBase
     {
         public override void Handle(GameWorld world)
         {
+            // check if the bullet is connected to an alien that is alive
             foreach (var b in world.Bullets)
             {
                 if (!b.IsAlive || !b.FromAlien) continue;
 
-
+                // if the player was hit then make the player take damage by 1.
                if(Hit(b.Bounds, world.Player.Bounds))
                 {
                     b.IsAlive = false;
@@ -1251,14 +1270,17 @@ namespace SpaceInvadersGV1
     // class that handles the interaction between the player bullet and the boulder 
     public sealed class PlayerBulletVsBoulderCollision : CollisionSystemBase
     {
+        // method handles Collision between player bullet and boulder 
         public override void Handle(GameWorld world)
         {
             foreach(var b in world.Bullets)
             {
-                if (!b.IsAlive || b.FromAlien) continue;
+                if (!b.IsAlive || b.FromAlien) continue; // make sure we are not working with aliens
 
+                //find out at what point the bullet from player hits the boulder
                 var hitPoint = new PointF(b.Bounds.X + b.Bounds.Width / 2f, b.Bounds.Y + b.Bounds.Height / 2f);
 
+                // use the hit point to check which boulder was hit and take a chunck out of boulder
                 foreach (var bo in world.boulders)
                 {
                     if (!bo.IsAlive) continue;
@@ -1277,19 +1299,23 @@ namespace SpaceInvadersGV1
     }
 
 
+    // class that handles the interaction between the alien bullet and the boulder 
     public sealed class AlienBulletVsBoulderCollision : CollisionSystemBase
     {
-        public override void Handle(GameWorld world)
+        // method handles Collision between alien bullet and boulder 
+        public override void Handle(GameWorld world) 
         {
             foreach( var b in world.Bullets)
             {
-                if (!b.IsAlive || !b.FromAlien) continue;
+               if (!b.IsAlive || !b.FromAlien) continue;
 
+                //find out at what point the bullet from alien hits the boulder
                 var hitPoint = new PointF(b.Bounds.X + b.Bounds.Width / 2f, b.Bounds.Y + b.Bounds.Height / 2f);
 
+                // use the hit point to check which boulder was hit and take a chunck out of boulder
                 foreach ( var bo in world.boulders)
                 {
-                    if (!bo.IsAlive) continue;
+                    if (!bo.IsAlive) continue; 
 
                     if (!Hit(b.Bounds, bo.Bounds)) continue;
 
